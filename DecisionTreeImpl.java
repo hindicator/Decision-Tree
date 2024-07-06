@@ -66,7 +66,7 @@ public class DecisionTreeImpl extends DecisionTree {
 
   @Override
   public void printAccuracy(DataSet test) {
-    System.out.format("%.5f\n", this.getAccuracy(test));
+    System.out.format("%.5f\n", this.getAccuracy(test.instances));
   }
 
   /**
@@ -75,14 +75,14 @@ public class DecisionTreeImpl extends DecisionTree {
    * @param test: the test set
    * @return the accuracy
    */
-  private double getAccuracy(DataSet test) {
+  private double getAccuracy(List<Instance> examples) {
     int correct = 0;
-    for (Instance instance : test.instances) {
+    for (Instance instance : examples) {
       if (classify(instance).equals(instance.label)) {
         correct++;
       }
     }
-    return (double) correct / test.instances.size();
+    return (double) correct / examples.size();
   }
 
   /**
@@ -98,33 +98,40 @@ public class DecisionTreeImpl extends DecisionTree {
     this.attributeValues = train.attributeValues;
 
     this.root = _buildDecisionTree(train.instances, train.attributes, null);
-    pruneTree(this.root, tune);
+    pruneTree(this.root, tune.instances);
   }
 
   /**
    * Prune the decision tree using the given tuning set.
+   * 
    * @param node the current node being pruned
    * @param tune
    */
-  private void pruneTree(DecTreeNode node, DataSet tune) {
+  private void pruneTree(DecTreeNode node, List<Instance> examples) {
     if (node.terminal) {
       return;
     }
 
     for (DecTreeNode child : node.children) {
-      this.pruneTree(child, tune);
+      List<Instance> examplesWithAttributeValue = new ArrayList<Instance>();
+      for (Instance instance : examples) {
+        if (instance.attributes.get(getAttributeIndex(node.attribute)).equals(child.parentAttributeValue)) {
+          examplesWithAttributeValue.add(instance);
+        }
+      }
+      this.pruneTree(child, examplesWithAttributeValue);
     }
 
     List<DecTreeNode> originalChildren = new ArrayList<DecTreeNode>(node.children);
     String originalLabel = node.label;
 
-    double accuracyWithoutPruning = getAccuracy(tune);
+    double accuracyWithoutPruning = getAccuracy(examples);
 
     node.label = getMostCommonLabel(node);
     node.terminal = true;
     node.children = null;
 
-    double accuracyWithPruning = getAccuracy(tune);
+    double accuracyWithPruning = getAccuracy(examples);
 
     // If accuracy is better or the same without pruning, revert.
     if (accuracyWithPruning < accuracyWithoutPruning) {
@@ -238,7 +245,8 @@ public class DecisionTreeImpl extends DecisionTree {
 
   /**
    * Helper function to count the number of rows with the given attribute value
-   * Count how many rows have the given attributeValue for the given attribute for each attributeValue
+   * Count how many rows have the given attributeValue for the given attribute for
+   * each attributeValue
    * 
    * @param examples
    * @param attribute
