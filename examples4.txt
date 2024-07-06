@@ -1,0 +1,28 @@
+// This dataset is used to predict the risk quality of a loan application.
+// https://bigml.com/user/bigml/gallery/dataset/4f89c38f1552686459000033
+// first column is the class label: G(Good), B(Bad)
+// then the list of possible values for each attribute
+// --------------------------------------------------
+// A1: t(true), f(false)
+// --------------------------------------------------
+// A2: t(true), f(false)
+// --------------------------------------------------
+// A3: t(true), f(false)
+// --------------------------------------------------
+// A4: t(true), f(false)
+// --------------------------------------------------
+// A5: t(true), f(false)
+// --------------------------------------------------
+%%,G,B
+##,A1,t,f
+##,A2,t,f
+##,A3,t,f
+##,A4,t,f
+##,A5,t,f
+t,t,f,f,f,G
+f,f,t,t,f,G
+t,f,f,t,f,G
+t,f,t,f,t,G
+f,t,f,f,f,B
+t,t,f,t,t,B
+f,t,t,t,t,B
