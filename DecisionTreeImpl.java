@@ -69,6 +69,12 @@ public class DecisionTreeImpl extends DecisionTree {
     System.out.format("%.5f\n", this.getAccuracy(test));
   }
 
+  /**
+   * Get the accuracy of the decision tree on a given test set.
+   * 
+   * @param test: the test set
+   * @return the accuracy
+   */
   private double getAccuracy(DataSet test) {
     int correct = 0;
     for (Instance instance : test.instances) {
@@ -95,6 +101,11 @@ public class DecisionTreeImpl extends DecisionTree {
     pruneTree(this.root, tune);
   }
 
+  /**
+   * Prune the decision tree using the given tuning set.
+   * @param node the current node being pruned
+   * @param tune
+   */
   private void pruneTree(DecTreeNode node, DataSet tune) {
     if (node.terminal) {
       return;
@@ -190,7 +201,7 @@ public class DecisionTreeImpl extends DecisionTree {
    * 
    * @param attribute
    * @param examples
-   * @return
+   * @return double
    */
   private double infoGain(String attribute, List<Instance> examples) {
     double attributeEntropy = 0;
@@ -225,6 +236,15 @@ public class DecisionTreeImpl extends DecisionTree {
     return attributeRatio * totalEntropy * -1;
   }
 
+  /**
+   * Helper function to count the number of rows with the given attribute value
+   * Count how many rows have the given attributeValue for the given attribute for each attributeValue
+   * 
+   * @param examples
+   * @param attribute
+   * @param value
+   * @return List<Number>
+   */
   private List<Number> countRowsWithAttributeValue(List<Instance> examples, String attribute, String value) {
     List<Number> count = new ArrayList<Number>();
     this.labels.forEach(label -> count.add(0));
@@ -242,7 +262,7 @@ public class DecisionTreeImpl extends DecisionTree {
    * Helper function to calculate class entropy
    * 
    * @param examples
-   * @return
+   * @return double
    */
   private double calculateClassEntropy(List<Instance> examples) {
     List<Number> count = new ArrayList<Number>();
@@ -266,7 +286,7 @@ public class DecisionTreeImpl extends DecisionTree {
    * Helper function to check if all examples have the same label.
    * 
    * @param instances
-   * @return
+   * @return boolean
    */
   private boolean isAllExamplesHaveSameLabel(List<Instance> instances) {
     String headLabel = instances.get(0).label;
@@ -278,6 +298,12 @@ public class DecisionTreeImpl extends DecisionTree {
     return true;
   }
 
+  /**
+   * Helper function to get the most common output.
+   * 
+   * @param examples
+   * @return DecTreeNode
+   */
   private DecTreeNode getMostCommonOutput(List<Instance> examples) {
     Map<String, Number> outputMap = new HashMap<String, Number>();
 
@@ -300,6 +326,12 @@ public class DecisionTreeImpl extends DecisionTree {
     return new DecTreeNode(mostCommonOutput, null, null, true);
   }
 
+  /**
+   * Helper function to get the most common label.
+   * 
+   * @param node
+   * @return String
+   */
   private String getMostCommonLabel(DecTreeNode node) {
     Map<String, Number> labelMap = new HashMap<String, Number>();
     for (DecTreeNode child : node.children) {
@@ -330,7 +362,7 @@ public class DecisionTreeImpl extends DecisionTree {
    * 
    * @param instances
    * @param attributes
-   * @return
+   * @return String
    */
   private String findMaxImporantAttribute(List<Instance> instances, List<String> attributes) {
     double maxInfoGain = 0;
@@ -352,7 +384,7 @@ public class DecisionTreeImpl extends DecisionTree {
    * @param examples
    * @param attributes
    * @param parentExamples
-   * @return
+   * @return DecTreeNode
    */
   private DecTreeNode _buildDecisionTree(List<Instance> examples, List<String> attributes,
       List<Instance> parentExamples) {
