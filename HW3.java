@@ -48,10 +48,6 @@ public class HW3 {
     // Only create the sets that we intend to use
     // Verify that our attributes and labels are consistent in ordering across sets
     DataSet trainSet = createDataSet(args[1]);
-    for (int i = 0; i < args.length; i++) {
-
-      System.out.println("args" + i + " : " + args[i]);
-    }
     DataSet tuneSet = null;
     if (mode >= 4) {
       tuneSet = createDataSet(args[3]);
