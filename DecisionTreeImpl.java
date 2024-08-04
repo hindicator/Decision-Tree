@@ -39,17 +39,20 @@ public class DecisionTreeImpl extends DecisionTree {
     this.labels = train.labels;
     this.attributes = train.attributes;
     this.attributeValues = train.attributeValues;
-    this.root = _buildDecisionTree(train.instances, train.attributes, null);
+    this.root = _buildDecisionTree(train.instances, train.attributes, train.instances, null);
   }
 
   @Override
   public String classify(Instance instance) {
     DecTreeNode currentNode = root;
     while (!currentNode.terminal) {
-      String attribute = currentNode.attribute;
-      String value = instance.attributes.get(getAttributeIndex(attribute));
-      int valueIndex = getAttributeValueIndex(attribute, value);
-      currentNode = currentNode.children.get(valueIndex);
+      for (DecTreeNode child : currentNode.children) {
+        if (instance.attributes.get(getAttributeIndex(currentNode.attribute))
+            .equals(child.parentAttributeValue)) {
+          currentNode = child;
+          break;
+        }
+      }
     }
     return currentNode.label;
   }
@@ -97,8 +100,8 @@ public class DecisionTreeImpl extends DecisionTree {
     this.attributes = train.attributes;
     this.attributeValues = train.attributeValues;
 
-    this.root = _buildDecisionTree(train.instances, train.attributes, null);
-    pruneTree(this.root, tune.instances);
+    this.root = _buildDecisionTree(train.instances, train.attributes, train.instances, null);
+    pruneTree(this.root, tune);
   }
 
   /**
@@ -107,38 +110,23 @@ public class DecisionTreeImpl extends DecisionTree {
    * @param node the current node being pruned
    * @param tune
    */
-  private void pruneTree(DecTreeNode node, List<Instance> examples) {
+  private void pruneTree(DecTreeNode node, DataSet tune) {
     if (node.terminal) {
       return;
     }
 
     for (DecTreeNode child : node.children) {
-      List<Instance> examplesWithAttributeValue = new ArrayList<Instance>();
-      for (Instance instance : examples) {
-        if (instance.attributes.get(getAttributeIndex(node.attribute)).equals(child.parentAttributeValue)) {
-          examplesWithAttributeValue.add(instance);
-        }
-      }
-      this.pruneTree(child, examplesWithAttributeValue);
-    }
+      this.pruneTree(child, tune);
+      double accuracyWithoutPruning = getAccuracy(tune.instances);
+      node.terminal = true;
 
-    List<DecTreeNode> originalChildren = new ArrayList<DecTreeNode>(node.children);
-    String originalLabel = node.label;
-
-    double accuracyWithoutPruning = getAccuracy(examples);
-
-    node.label = getMostCommonLabel(node);
-    node.terminal = true;
-    node.children = null;
-
-    double accuracyWithPruning = getAccuracy(examples);
-
-    // If accuracy is better or the same without pruning, revert.
-    if (accuracyWithPruning < accuracyWithoutPruning) {
-      // Revert pruning.
+      double accuracyWithPruning = getAccuracy(tune.instances);
       node.terminal = false;
-      node.label = originalLabel;
-      node.children = originalChildren;
+
+      // If accuracy is better or the same with pruning, keep it.
+      if (accuracyWithPruning >= accuracyWithoutPruning) {
+        node.terminal = true;
+      }
     }
   }
 
@@ -307,12 +295,37 @@ public class DecisionTreeImpl extends DecisionTree {
   }
 
   /**
-   * Helper function to get the most common output.
+   * Find the attribute with the maximum information gain.
    * 
-   * @param examples
-   * @return DecTreeNode
+   * @param instances
+   * @param attributes
+   * @return String
    */
-  private DecTreeNode getMostCommonOutput(List<Instance> examples) {
+  private String findMaxImporantAttribute(List<Instance> instances, List<String> attributes) {
+    double maxInfoGain = 0;
+
+    String topAttribute = attributes.get(0);
+    for (String attribute : attributes) {
+      double infoGain = infoGain(attribute, instances);
+      if (infoGain > maxInfoGain) {
+        maxInfoGain = infoGain;
+        topAttribute = attribute;
+      }
+    }
+
+    if (maxInfoGain == 0) {
+      List<String> sortedAttributes = new ArrayList<>(attributes);
+      sortedAttributes.sort(String::compareTo);
+      return sortedAttributes.get(0);
+    }
+    return topAttribute;
+  }
+
+  private DecTreeNode buildDecisionTree(List<Instance> examples, List<String> attributes) {
+    return _buildDecisionTree(examples, attributes, examples, null);
+  }
+
+  private String getMostCommonLabel(List<Instance> examples) {
     Map<String, Number> outputMap = new HashMap<String, Number>();
 
     for (Instance instance : examples) {
@@ -331,61 +344,10 @@ public class DecisionTreeImpl extends DecisionTree {
         mostCommonOutput = key;
       }
     }
-    return new DecTreeNode(mostCommonOutput, null, null, true);
-  }
-
-  /**
-   * Helper function to get the most common label.
-   * 
-   * @param node
-   * @return String
-   */
-  private String getMostCommonLabel(DecTreeNode node) {
-    Map<String, Number> labelMap = new HashMap<String, Number>();
-    for (DecTreeNode child : node.children) {
-      if (child.label == null) {
-        continue;
-      }
-      if (labelMap.containsKey(child.label)) {
-        labelMap.put(child.label, labelMap.get(child.label).intValue() + 1);
-      } else {
-        labelMap.put(child.label, 1);
-      }
-    }
-
-    String mostCommonOutput = "";
-    int maxCount = 0;
-    for (String key : labelMap.keySet()) {
-      if (labelMap.get(key).intValue() > maxCount) {
-        maxCount = labelMap.get(key).intValue();
-        mostCommonOutput = key;
-      }
-    }
 
     return mostCommonOutput;
   }
 
-  /**
-   * Find the attribute with the maximum information gain.
-   * 
-   * @param instances
-   * @param attributes
-   * @return String
-   */
-  private String findMaxImporantAttribute(List<Instance> instances, List<String> attributes) {
-    double maxInfoGain = 0;
-    String topAttribute = attributes.get(0);
-    for (String attribute : attributes) {
-      double infoGain = infoGain(attribute, instances);
-      if (infoGain > maxInfoGain) {
-        maxInfoGain = infoGain;
-        topAttribute = attribute;
-      }
-    }
-    return topAttribute;
-  }
-
-  // instance: G[x, b, c, o, h, c, 1, 2, y, y]
   /**
    * Build a decision tree given a training set.
    * 
@@ -395,16 +357,16 @@ public class DecisionTreeImpl extends DecisionTree {
    * @return DecTreeNode
    */
   private DecTreeNode _buildDecisionTree(List<Instance> examples, List<String> attributes,
-      List<Instance> parentExamples) {
+      List<Instance> parentExamples, String parentAttribute) {
     if (examples.isEmpty()) {
-      return getMostCommonOutput(parentExamples);
+      return new DecTreeNode(getMostCommonLabel(parentExamples), null, parentAttribute, true);
     } else if (isAllExamplesHaveSameLabel(examples)) {
-      return new DecTreeNode(examples.get(0).label, null, null, true);
+      return new DecTreeNode(examples.get(0).label, null, parentAttribute, true);
     } else if (attributes.isEmpty()) {
-      return getMostCommonOutput(examples);
+      return new DecTreeNode(getMostCommonLabel(examples), null, parentAttribute, true);
     } else {
       String bestAttribute = findMaxImporantAttribute(examples, attributes);
-      DecTreeNode node = new DecTreeNode(null, bestAttribute, null, false);
+      DecTreeNode node = new DecTreeNode(getMostCommonLabel(examples), bestAttribute, parentAttribute, false);
       List<String> allAttributeValues = attributeValues.get(bestAttribute);
       for (String value : allAttributeValues) {
         List<Instance> examplesWithAttributeValue = new ArrayList<Instance>();
@@ -415,7 +377,7 @@ public class DecisionTreeImpl extends DecisionTree {
         }
         List<String> newAttributes = new ArrayList<String>(attributes);
         newAttributes.remove(bestAttribute);
-        DecTreeNode child = _buildDecisionTree(examplesWithAttributeValue, newAttributes, examples);
+        DecTreeNode child = _buildDecisionTree(examplesWithAttributeValue, newAttributes, examples, value);
         child.parentAttributeValue = value;
         node.addChild(child);
       }
